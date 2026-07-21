@@ -127,7 +127,7 @@ This information must be represented as probabilistic context—not immutable ju
 
 Sensitive themes (illness, war, discrimination, crime, gambling, doping, sexuality-related consequences, and violence) need content settings, respectful writing, and clear boundaries. Never present suffering as a trivial reward loop.
 
-For the prototype, use a fictional country and a deliberately small, authored data set. Add real-world statistical snapshots only once the core simulation is enjoyable and the source/licensing/update policy is defined.
+For the prototype, use Brazil as the real-world data context, divided by the five IBGE macroregions. Its clubs, people, competitions, media, sponsors, and names remain fictional. Use a deliberately small, authored data set; add broader real-world statistical snapshots only once the core simulation is enjoyable and the source/licensing/update policy is defined.
 
 ## 9. Economy, clubs, and sponsors
 
@@ -196,10 +196,10 @@ Initial modding deliverables:
 
 Included:
 
-- one fictional country, league, and eight clubs;
-- a youth-player start and basic character creator;
+- Brazil (using five IBGE macroregions), one fictional national league, and eight fictional clubs;
+- a 10-year-old youth-player start and basic character creator;
 - career and free-mode creation;
-- a small family/finance/training/relationship system;
+- a condensed youth phase from ages 10–14, then a small family/finance/training/relationship system;
 - 10–15 match scenarios;
 - match ratings, goals, assists, injuries, discipline, form, and season totals;
 - basic club selection and one transfer/contract path;
@@ -248,14 +248,15 @@ The prototype is successful if a player can truthfully say:
 4. “A bad choice or bad luck created a story rather than feeling like arbitrary punishment.”
 5. “I can imagine changing the league, clubs, or scenarios myself.”
 
-## 16. Open design questions
+## 16. Decisions made
 
-- What age and career stage should the vertical slice begin at: academy, 16-year-old prospect, or first professional contract?
-- Should every match be interactive, or should routine matches offer a fast simulation with only major moments?
-- How much fictionalization should the default world use before optional real-world data packs arrive?
-- What visual tone fits the game: clean sports broadcast, notebook/diary, newspaper archive, or a blend?
-- What is the preferred temporal unit for life simulation: daily, weekly, or event-driven weeks?
+- Start at age 10. The player is already talented enough to play for a local youth team.
+- Ages 10–14 use condensed seasonal decisions and milestone events; this establishes personality and player style without requiring a full match calendar.
+- From the first senior season, every match is interactive by default. Adult players may instead choose to simulate a match.
+- Brazil supplies real-world geographic and statistical context through its IBGE macroregions. All teams, people, media, sponsors, and competitions are fictional.
+- The interface is an in-world personal computer: messaging, documents, news, finance, social media, photos, and calendar are distinct applications.
+- Life simulation advances by event-driven weeks. Match days and deadline events can interrupt the calendar.
 
 ## 17. Immediate next step
 
-Write the **prototype content specification**: the fictional country, eight clubs, initial player archetypes, attributes, 10–15 scenario definitions, and one full season's decision/event pool. This gives the implementation a concrete world to build against.
+Implement the **simulation kernel**: seeded time, characters, attributes, the event queue, and saveable state. The companion prototype content specification supplies the concrete world to build against.

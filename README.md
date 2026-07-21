@@ -7,6 +7,7 @@ This repository will contain the game code, data packs, mods, tests, and design 
 ## Start here
 
 - [Project documentation](docs/project-documentation.md) — vision, scope, architecture, and roadmap.
+- [Prototype content specification](docs/prototype-content-specification.md) — the first playable world and its rules.
 - `src/` — future game code.
 - `data/` — built-in world and gameplay data.
 - `mods/` — example and community-created content packs.
@@ -14,7 +15,7 @@ This repository will contain the game code, data packs, mods, tests, and design 
 
 ## Project status
 
-Pre-production. The next deliverable is the prototype content specification: a small fictional country and league, eight clubs, player archetypes, and the first match scenarios.
+Pre-production. The first playable world is specified; implementation can now begin with the simulation kernel.
 
 ## Version control
 
