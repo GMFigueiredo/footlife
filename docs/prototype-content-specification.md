@@ -34,7 +34,7 @@ Example annual decisions:
 - use a small windfall for boots, household needs, or a risky opportunity;
 - choose futsal, street football, athletics, or rest during the off-season.
 
-At age 15, the player joins an academy, a semi-formal youth side, or an under-resourced local route based on their story. The prototype then jumps to the first senior season.
+At age 15, the player joins an academy, a semi-formal youth side, or an under-resourced local route based on their story. The first senior season begins at age 16.
 
 ### Senior football
 

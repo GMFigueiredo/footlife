@@ -199,7 +199,7 @@ Included:
 - Brazil (using five IBGE macroregions), one fictional national league, and eight fictional clubs;
 - a 10-year-old youth-player start and basic character creator;
 - career and free-mode creation;
-- a condensed youth phase from ages 10–14, then a small family/finance/training/relationship system;
+- a condensed youth phase from ages 10–14, followed by the first senior season at age 16;
 - 10–15 match scenarios;
 - match ratings, goals, assists, injuries, discipline, form, and season totals;
 - basic club selection and one transfer/contract path;
@@ -251,7 +251,7 @@ The prototype is successful if a player can truthfully say:
 ## 16. Decisions made
 
 - Start at age 10. The player is already talented enough to play for a local youth team.
-- Ages 10–14 use condensed seasonal decisions and milestone events; this establishes personality and player style without requiring a full match calendar.
+- Ages 10–14 use condensed seasonal decisions and milestone events; age 15 is an academy transition year, and the first senior season begins at 16.
 - From the first senior season, every match is interactive by default. Adult players may instead choose to simulate a match.
 - Brazil supplies real-world geographic and statistical context through its IBGE macroregions. All teams, people, media, sponsors, and competitions are fictional.
 - The interface is an in-world personal computer: messaging, documents, news, finance, social media, photos, and calendar are distinct applications.

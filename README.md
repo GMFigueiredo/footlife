@@ -15,7 +15,9 @@ This repository will contain the game code, data packs, mods, tests, and design 
 
 ## Project status
 
-Pre-production. The first playable world is specified; implementation can now begin with the simulation kernel.
+The first browser-playable prototype is available. Open `index.html` in a modern browser to play it locally; no installation or server is required.
+
+See [the first-playtest guide](docs/first-playtest-guide.md) for what is included and what to test.
 
 ## Version control
 
