@@ -95,7 +95,7 @@
 
   /* ── Cenários de Saída / Vida Social (10 Cenários) ───────────────── */
   const goOutScenarios = [
-    { title: 'Festa na Área VIP', text: 'Você é convidado para uma casa noturna exclusiva em Porto Claro. Torcedores locais e influenciadores notam sua presença.',
+    { title: 'Festa na Área VIP', text: 'Você é convidado para uma casa noturna exclusiva em {city}. Torcedores locais e influenciadores notam sua presença.',
       choices: [
         ['Pagar uma rodada de bebidas para a galera', 'reputação +5, seguidores +150, dinheiro -300', () => { state.reputationScore = Math.min(100, (state.reputationScore||0)+5); state.followers += 150; state.money = Math.max(0, state.money-300); }],
         ['Ficar na sua e conversar sobre tática com um jornalista', 'reputação +8, seguidores +30', () => { state.reputationScore = Math.min(100, (state.reputationScore||0)+8); state.followers += 30; }],
@@ -126,7 +126,7 @@
     { title: 'Podcast Esportivo ao Vivo', text: 'Um podcast famoso de futebol da região convida você para uma entrevista transmitida ao vivo.',
       choices: [
         ['Elogiar seus companheiros de equipe e a comissão técnica', 'reputação +10, seguidores +150', () => { state.reputationScore = Math.min(100, (state.reputationScore||0)+10); state.followers += 150; }],
-        ['Garantir que o time vai vencer o clássico com gol seu', 'fama +3, reputação -5, confiança +5%', () => { state.fame += 3; state.reputationScore = Math.max(-100, (state.reputationScore||0)-5); state.tacticalBonus = 5; }],
+        ['Garantir que o time vai vencer o clássico com gol seu', 'fama +3, reputação -5, bônus tático na próxima partida', () => { state.fame += 3; state.reputationScore = Math.max(-100, (state.reputationScore||0)-5); state.tacticalBonus = 5; }],
         ['Contar histórias engraçadas dos bastidores da infância', 'seguidores +250, reputação +4', () => { state.followers += 250; state.reputationScore = Math.min(100, (state.reputationScore||0)+4); }]
       ]
     },
@@ -137,7 +137,7 @@
         ['Comprar um relógio sofisticado de presente para seu pai', 'dinheiro -800, reputação +12, orgulho familiar +1', () => { state.money = Math.max(0, state.money-800); state.reputationScore = Math.min(100, (state.reputationScore||0)+12); }]
       ]
     },
-    { title: 'Festa da Torcida Organizada', text: 'A principal torcida organizada do seu clube está comemorando aniversário de fundação.',
+    { title: 'Festa da Torcida Organizada', text: 'A principal torcida organizada do {club} está comemorando aniversário de fundação.',
       choices: [
         ['Pular na arquibancada e cantar os hinos junto com a galera', 'seguidores +350, reputação +8', () => { state.followers += 350; state.reputationScore = Math.min(100, (state.reputationScore||0)+8); }],
         ['Fazer um discurso emocionado sobre garra e dedicação ao manto', 'reputação +10, fama +1', () => { state.reputationScore = Math.min(100, (state.reputationScore||0)+10); state.fame += 1; }],
@@ -190,9 +190,9 @@
     const fFore = brData.femaleForenames[Math.floor(Math.random()*brData.femaleForenames.length)];
     const mFore = brData.maleForenames[Math.floor(Math.random()*brData.maleForenames.length)];
     const sur = brData.surnames[Math.floor(Math.random()*brData.surnames.length)];
-    const randTeam = clubs[Math.floor(Math.random()*clubs.length)];
 
     return {
+      saveVersion: 2,
       firstName: 'Gustavo', surname: sur, name: `Gustavo ${sur}`, shirtName: 'GUS', sex: 'M', country: 'Brasil', region: 'Aleatório', favoriteTeam: 'Estrela do Porto', foot: 'Destro', origin: '',
       playerClub: 'Aleatório',
       options: { hideProbabilities: true, randomizeTeam: true, randomizeRegion: true },
@@ -213,9 +213,11 @@
       _poolPoints: 0,
       reputation: { professional: 0, flair: 0, resilient: 0 },
       money: 120, followers: 84, goals: 0, assists: 0, matches: 0,
-      motmCount: 0, nickname: '', matchRatings: [], notableActions: [], socialFeed: [],
+      motmCount: 0, nickname: '', nicknameRank: 0, matchRatings: [], notableActions: [], socialFeed: [],
+      career: { goals: 0, assists: 0, motm: 0, matches: 0, trophies: 0, awards: [] },
+      seasonHistory: [],
       stamina: 100, trainingsThisWeek: 0, tacticalBonus: 0,
-      purchases: { vehicle: 'none', home: 'parents' }, staminaRecoveryBonus: 0, followerMultiplier: 1.0, privateTrainingPending: false,
+      purchases: { vehicle: 'none', home: 'parents', highestHomeTier: 0 }, followerMultiplier: 1.0, privateTrainingPending: false,
       news: [], messages: [],
       score: { you: 0, them: 0 }, matchStep: 0, matchOutcome: null, matchEvents: [], matchMoments: [], lastMatch: null,
       morale: 50, moralePower: 0,
@@ -223,7 +225,7 @@
       schedule: buildSchedule(), scheduleIndex: 0,
       fixtureIndex: 0, fixtures: buildFixtures(), table: blankTable(),
       records: world.recordDefinitions.map(r => ({ ...r })), eventIndex: 0,
-      playoffPhase: '', playoffOpponent: '', popupModal: null, activeWebStore: 'vehicles'
+      playoffPhase: '', playoffOpponent: '', popupModal: null, activeWebStore: 'vehicles', activeTab: 'calendar'
     };
   };
 
@@ -244,21 +246,74 @@
       choices:[['Lá atrás — Sei ler o jogo e desarmar','composure',2.0,'resilient',2,'defender'],['No meio — Faço a bola girar e organizo as jogadas','passing',2.0,'professional',2,'midfielder'],['No ataque — Tenho faro de gol e gosto de decidir','finishing',2.0,'flair',2,'attacker']] },
   ];
 
-  /* ── Persistência de Dados ──────────────────────────────────────── */
+  /* ── Persistência de Dados (com Backup e Migração Segura) ────────── */
   function load() {
+    const rawStr = localStorage.getItem('footlife-prototype') || localStorage.getItem('fcs-prototype');
+    if (!rawStr) return null;
     try {
-      const saved = JSON.parse(localStorage.getItem('footlife-prototype') || localStorage.getItem('fcs-prototype'));
-      if (!saved) return null;
+      const saved = JSON.parse(rawStr);
+      if (!saved || typeof saved !== 'object') return null;
       const base = freshState();
-      const m = { ...base, ...saved, attributes:{...base.attributes,...saved.attributes}, reputation:{...base.reputation,...saved.reputation}, family:{...base.family,...saved.family}, options:{...base.options,...saved.options}, visuals:{...base.visuals,...saved.visuals}, purchases:{...base.purchases,...saved.purchases}, score:{...base.score,...saved.score}, matchEvents:saved.matchEvents||[], matchMoments:saved.matchMoments||[], fixtures:saved.fixtures||base.fixtures, table:saved.table||base.table, records:saved.records||base.records };
+      const m = {
+        ...base,
+        ...saved,
+        attributes: { ...base.attributes, ...(saved.attributes || {}) },
+        reputation: { ...base.reputation, ...(saved.reputation || {}) },
+        family: {
+          ...base.family,
+          ...(saved.family || {}),
+          father: { ...base.family.father, ...(saved.family?.father || {}) },
+          mother: { ...base.family.mother, ...(saved.family?.mother || {}) }
+        },
+        options: { ...base.options, ...(saved.options || {}) },
+        visuals: { ...base.visuals, ...(saved.visuals || {}) },
+        purchases: { ...base.purchases, ...(saved.purchases || {}) },
+        score: { ...base.score, ...(saved.score || {}) },
+        career: { ...base.career, ...(saved.career || {}) },
+        seasonHistory: Array.isArray(saved.seasonHistory) ? saved.seasonHistory : [],
+        matchEvents: saved.matchEvents || [],
+        matchMoments: saved.matchMoments || [],
+        fixtures: saved.fixtures || base.fixtures,
+        table: saved.table || base.table,
+        records: saved.records || base.records
+      };
       if (!m.playerClub || m.playerClub === 'Random') m.playerClub = 'Estrela do Porto';
       if (!m.name) m.name = `${m.firstName||'Gustavo'} ${m.surname||'Silva'}`;
       if (m.reputationScore === undefined) m.reputationScore = 0;
       if (m.fame === undefined) m.fame = 0;
       if (m.luck === undefined) m.luck = 7.0;
       if (m.currentYear === undefined) m.currentYear = 2026;
+      if (!m.activeTab) m.activeTab = 'calendar';
+
+      // Migração de status dos pais e regiões para PT-BR
+      if (m.family.father.status === 'Alive') m.family.father.status = 'Vivo';
+      if (m.family.father.status === 'Deceased') m.family.father.status = 'Falecido';
+      if (m.family.mother.status === 'Alive') m.family.mother.status = 'Viva';
+      if (m.family.mother.status === 'Deceased') m.family.mother.status = 'Falecida';
+      m.region = regionDisplay(m.region);
+      if (m.family.region) m.family.region = regionDisplay(m.family.region);
+
+      // Migração de rótulos de recordes para PT-BR preservando detentores e marcas
+      if (Array.isArray(m.records)) {
+        m.records = world.recordDefinitions.map(def => {
+          const existing = m.records.find(r => r.id === def.id);
+          return existing ? { ...def, value: existing.value, holder: existing.holder, year: existing.year } : { ...def };
+        });
+      }
+
+      // Migração de estatísticas vitalícias da carreira (B2)
+      const histGoals = m.seasonHistory.reduce((s, h) => s + (h.goals || 0), 0);
+      const histAssists = m.seasonHistory.reduce((s, h) => s + (h.assists || 0), 0);
+      const histMotm = m.seasonHistory.reduce((s, h) => s + (h.motm || 0), 0);
+      if ((m.career.goals || 0) < histGoals + (m.goals || 0)) m.career.goals = histGoals + (m.goals || 0);
+      if ((m.career.assists || 0) < histAssists + (m.assists || 0)) m.career.assists = histAssists + (m.assists || 0);
+      if ((m.career.motm || 0) < histMotm + (m.motmCount || 0)) m.career.motm = histMotm + (m.motmCount || 0);
+      if ((m.career.matches || 0) < (m.matches || 0)) m.career.matches = m.matches || 0;
+      if (!Array.isArray(m.career.awards)) m.career.awards = [];
+
       // Não persiste modais temporários entre recarregamentos
       m.popupModal = null;
+      m.popupQueue = [];
       if (m.phase === 'postMatch') m.phase = 'desktop';
       if (m.matchOutcome && m.matchStep >= (m.matchMoments?.length || 0)) {
         m.matchOutcome = null;
@@ -276,16 +331,22 @@
         m.fame = 2;
       }
       if (!m.socialFeed || !m.socialFeed.length) {
+        const handle = `@${(m.playerClub || 'Estrela do Porto').toLowerCase().replace(/[^a-z0-9]/g, '_')}_oficial`;
         m.socialFeed = [
           { handle: '@MesaRedondaAurora', text: `${m.name} vem demonstrando muita personalidade com a camisa do ${m.playerClub || 'Estrela do Porto'}.`, sentiment: 'positive', stamp: `Partida ${m.matches}` },
           { handle: '@TaticaBR', text: `Jovem atleta para ficar de olho na Liga Nacional Aurora: ${m.surname || m.name}.`, sentiment: 'neutral', stamp: `Partida ${m.matches}` },
-          { handle: '@estrela_porto_oficial', text: `Muita expectativa em torno da evolução de ${m.name} nesta temporada! ⚽🌟`, sentiment: 'positive', stamp: `Partida ${m.matches}` }
+          { handle: handle, text: `Muita expectativa em torno da evolução de ${m.name} nesta temporada! ⚽🌟`, sentiment: 'positive', stamp: `Partida ${m.matches}` }
         ];
       }
       for (const k of Object.keys(m.attributes)) m.attributes[k]=Number(m.attributes[k]);
       recalculateLeagueTableIfNeeded(m);
       return m;
-    } catch { return null; }
+    } catch (err) {
+      console.error('Erro ao carregar carreira salva:', err);
+      try { localStorage.setItem('footlife-corrupted-backup', rawStr); } catch {}
+      window._loadError = err?.message || 'Erro de leitura do save';
+      return null;
+    }
   }
 
   function recalculateLeagueTableIfNeeded(m) {
@@ -324,15 +385,33 @@
   }
 
   let state = load() || freshState();
-  const save = () => localStorage.setItem('footlife-prototype', JSON.stringify(state));
+  const save = () => {
+    try {
+      const prev = localStorage.getItem('footlife-prototype');
+      if (prev) localStorage.setItem('footlife-backup', prev);
+      localStorage.setItem('footlife-prototype', JSON.stringify(state));
+    } catch (e) { console.error('Falha ao salvar:', e); }
+  };
   const reset = () => { state = freshState(); save(); render(); };
   const addNews = (headline, body) => { state.news.unshift({ headline, body, stamp:`${state.age} anos · ${state.currentYear}` }); if (state.news.length > 50) state.news.length = 50; };
-  const addMessage = (from, text) => { state.messages.unshift({ from, text, read: false, stamp: `${state.age} anos` }); state.unreadMessagesCount = state.messages.filter(m => !m.read).length; };
+  const addMessage = (from, text) => {
+    state.messages.unshift({ from, text, read: false, stamp: `${state.age} anos` });
+    if (state.messages.length > 100) state.messages.length = 100;
+    state.unreadMessagesCount = state.messages.filter(m => !m.read).length;
+  };
 
   /* ── Auxiliares ─────────────────────────────────────────────────── */
   const attr = k => state.attributes[k]||7.0;
   const attrDisplay = k => attr(k).toFixed(1);
   const playerClub = () => state.playerClub || 'Estrela do Porto';
+  const clubCity = () => clubData(playerClub())?.city || 'Porto Claro';
+  const clubHandle = () => `@${playerClub().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_')}_oficial`;
+  const fanHandle = () => `@Torcida${clubCity().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '')}`;
+  const interpolateClubVars = str => String(str || '').replace(/\{club\}/g, playerClub()).replace(/\{city\}/g, clubCity());
+  const seasonAvgRating = () => state.matchRatings && state.matchRatings.length ? (state.matchRatings.reduce((a, b) => a + b, 0) / state.matchRatings.length) : null;
+  const careerGoals = () => Math.max(state.career?.goals || 0, state.goals || 0);
+  const careerAssists = () => Math.max(state.career?.assists || 0, state.assists || 0);
+  const careerMotm = () => Math.max(state.career?.motm || 0, state.motmCount || 0);
   const regionName = () => (state.region==='Random'||state.region==='Aleatório')?'Centro-Oeste':state.region;
   const initials = () => (state.shirtName||state.surname||'YP').slice(0,2).toUpperCase();
   const staminaColor = () => state.stamina>60?'#398143':state.stamina>30?'#b8860b':'#a31818';
@@ -366,8 +445,9 @@
   function calculatePhase1Target(key) {
     const skill = attr(key);
     const luckMod = Math.round((state.luck || 7.0) - 7.0);
-    // Fórmula: Alvo = Math.max(3, 22 - skill - luckMod). Sorte acima de 7 reduz o alvo necessário!
-    return Math.max(3, Math.round(22 - skill - luckMod));
+    const tactMod = (state.tacticalBonus || 0) > 0 ? -1 : 0;
+    // Fórmula: Alvo = Math.max(3, 22 - skill - luckMod + tactMod). Sorte acima de 7 e estudo tático reduzem o alvo necessário!
+    return Math.max(3, Math.round(22 - skill - luckMod + tactMod));
   }
 
   function calculateMatchRating() {
@@ -404,20 +484,27 @@
 
   function followerGain(base) { return Math.round(base * (state.followerMultiplier || 1.0)); }
 
-  /* ── Apelidos da Carreira ───────────────────────────────────────── */
+  /* ── Apelidos da Carreira (Monotônicos e Baseados na Carreira) ──── */
   const nicknameThresholds = [
-    { check: s => s.notableActions.some(a => a.type==='poker'), name:'O Destruidor' },
-    { check: s => s.motmCount >= 3, name:'O Inevitável' },
-    { check: s => s.goals >= 15, name:'O Artilheiro' },
-    { check: s => s.goals >= 10, name:'O Fantasma de Porto Claro' },
-    { check: s => s.assists >= 5, name:'O Maestro' },
-    { check: s => s.goals >= 5, name:'O Menino' },
-    { check: s => s.notableActions.some(a => a.type==='hatTrick'), name:'O Fenômeno' },
+    { rank: 7, check: s => s.notableActions.some(a => a.type==='poker'), name: () => 'O Destruidor' },
+    { rank: 6, check: () => careerGoals() >= 15, name: () => 'O Artilheiro' },
+    { rank: 5, check: () => careerMotm() >= 3, name: () => 'O Inevitável' },
+    { rank: 4, check: s => s.notableActions.some(a => a.type==='hatTrick'), name: () => 'O Fenômeno' },
+    { rank: 3, check: () => careerGoals() >= 10, name: () => `O Fantasma de ${clubCity()}` },
+    { rank: 2, check: () => careerAssists() >= 5, name: () => 'O Maestro' },
+    { rank: 1, check: () => careerGoals() >= 5, name: () => 'O Menino' },
   ];
 
   function checkNickname() {
     const prev = state.nickname;
-    for (const th of nicknameThresholds) { if (th.check(state)) { state.nickname = th.name; break; } }
+    const curRank = state.nicknameRank || 0;
+    for (const th of nicknameThresholds) {
+      if (th.rank > curRank && th.check(state)) {
+        state.nickname = th.name();
+        state.nicknameRank = th.rank;
+        break;
+      }
+    }
     if (state.nickname && state.nickname !== prev) {
       addSocialPost('nickname');
       addMessage('Jornalista local', `A crônica esportiva começou a chamar você de "${state.nickname}". O que acha desse apelido?`);
@@ -443,15 +530,27 @@
     else if (state.reputation && ev.effect in state.reputation) state.reputation[ev.effect] += 1;
   }
 
-  /* ── Modais de Notificação ──────────────────────────────────────── */
-  function showPopupModal(title, text, buttonLabel, onConfirm) {
+  /* ── Modais de Notificação e Escolhas (Fila Síncrona Segura) ────── */
+  function showPopupModal(title, text, buttonLabel, onConfirm, choices = null) {
     state.popupQueue = state.popupQueue || [];
     if (state.popupModal) {
-      state.popupQueue.push({ title, text, buttonLabel, onConfirm });
+      state.popupQueue.push({ title, text, buttonLabel, onConfirm, choices });
       return;
     }
-    state.popupModal = { title, text, buttonLabel, onConfirm };
+    state.popupModal = { title, text, buttonLabel, onConfirm, choices };
     render();
+  }
+
+  function advancePopupQueue(afterClose) {
+    state.popupModal = null;
+    document.querySelector('#modal-overlay')?.remove();
+    if (afterClose) afterClose();
+    if (state.popupQueue && state.popupQueue.length) {
+      const next = state.popupQueue.shift();
+      showPopupModal(next.title, next.text, next.buttonLabel, next.onConfirm, next.choices);
+    } else {
+      save(); render();
+    }
   }
 
   function renderPopupModalOverlay() {
@@ -464,23 +563,29 @@
       overlay.className = 'popup-modal-overlay';
       document.body.appendChild(overlay);
     }
+    const choicesHtml = Array.isArray(m.choices) && m.choices.length
+      ? `<div style="display:flex;flex-direction:column;gap:8px;margin:12px 0">${m.choices.map((c, i) => `<button class="${c.className || 'paper-choice'}" data-modal-choice="${i}" type="button" style="text-align:left;padding:10px">${c.html || `<strong>${c.label}</strong>${c.sub ? `<br><small style="color:#596773">${c.sub}</small>` : ''}`}</button>`).join('')}</div>`
+      : '';
+
     overlay.innerHTML = `<div class="popup-modal-content">
       <h2>${m.title}</h2>
       <p>${m.text}</p>
-      <button class="classic-button" id="modal-confirm-btn" style="width:100%">${m.buttonLabel||'Continuar'}</button>
+      ${choicesHtml}
+      ${m.buttonLabel !== null ? `<button class="classic-button" id="modal-confirm-btn" style="width:100%">${m.buttonLabel || 'Continuar'}</button>` : ''}
     </div>`;
-    document.querySelector('#modal-confirm-btn').onclick = () => {
-      const cb = m.onConfirm;
-      state.popupModal = null;
-      overlay.remove();
-      if (cb) cb();
-      if (state.popupQueue && state.popupQueue.length) {
-        const next = state.popupQueue.shift();
-        showPopupModal(next.title, next.text, next.buttonLabel, next.onConfirm);
-      } else {
-        save(); render();
-      }
-    };
+
+    overlay.querySelectorAll('[data-modal-choice]').forEach(btn => {
+      btn.onclick = () => {
+        const idx = Number(btn.dataset.modalChoice);
+        const choice = m.choices[idx];
+        advancePopupQueue(choice?.onSelect);
+      };
+    });
+
+    const confirmBtn = overlay.querySelector('#modal-confirm-btn');
+    if (confirmBtn) {
+      confirmBtn.onclick = () => advancePopupQueue(m.onConfirm);
+    }
   }
 
   /* ── Eventos Semanais, Salário e Família ─────────────────────────── */
@@ -489,8 +594,16 @@
     const followerIncome = Math.floor(state.followers / 100);
     let weeklyWage = 850 + followerIncome;
     
+    // Verifica se pelo menos um dos pais está vivo antes de aplicar o repasse (B23)
+    const fStatus = state.family?.father?.status;
+    const mStatus = state.family?.mother?.status;
+    const parentsAlive = (fStatus === 'Vivo' || fStatus === 'Alive') || (mStatus === 'Viva' || mStatus === 'Vivo' || mStatus === 'Alive');
+    if (!parentsAlive && state.family) {
+      state.family.titheRate = 0;
+    }
+
     // Repasse familiar para menores de 18 anos
-    if (state.age < 18 && state.family.titheRate > 0) {
+    if (state.age < 18 && state.family.titheRate > 0 && parentsAlive) {
       const tithe = Math.floor(weeklyWage * state.family.titheRate);
       weeklyWage -= tithe;
     }
@@ -543,6 +656,55 @@
     });
   }
 
+  /* ── Premiações de Fim de Temporada (F2) ────────────────────────── */
+  function awardSeasonPrizes() {
+    if (state._prizesAwardedThisSeason) return;
+    state._prizesAwardedThisSeason = true;
+    state._seasonAwardsThisYear = [];
+
+    const avg = seasonAvgRating() || 6.0;
+    const wonAwards = [];
+    let totalCash = 0;
+    let totalFame = 0;
+    let totalFollowers = 0;
+
+    if (state.goals >= 10) {
+      wonAwards.push({ title: '⚽ Chuteira de Ouro (Artilheiro)', cash: 3000, fame: 3, followers: 300 });
+    }
+    if (state.assists >= 6) {
+      wonAwards.push({ title: '🎯 Rei das Assistências (Garçom)', cash: 2000, fame: 2, followers: 200 });
+    }
+    if (state.age <= 18 && avg >= 7.0 && state.matchRatings.length >= 4) {
+      wonAwards.push({ title: '🌟 Revelação do Campeonato', cash: 2500, fame: 3, followers: 250 });
+    }
+    if (avg >= 7.8 && (state.goals + state.assists) >= 8) {
+      wonAwards.push({ title: '🏆 Bola de Ouro (Craque da Liga)', cash: 4000, fame: 4, followers: 400 });
+    } else if (avg >= 7.2 && state.matchRatings.length >= 4) {
+      wonAwards.push({ title: '🥇 Seleção do Campeonato', cash: 1500, fame: 1, followers: 150 });
+    }
+
+    if (wonAwards.length > 0) {
+      state.career = state.career || { goals: 0, assists: 0, motm: 0, matches: 0, trophies: 0, awards: [] };
+      state.career.awards = state.career.awards || [];
+      wonAwards.forEach(a => {
+        totalCash += a.cash;
+        totalFame += a.fame;
+        totalFollowers += followerGain(a.followers);
+        state._seasonAwardsThisYear.push(a.title);
+        state.career.awards.push({ year: state.currentYear, title: a.title, club: playerClub() });
+      });
+      state.money += totalCash;
+      state.fame += totalFame;
+      state.followers += totalFollowers;
+
+      const listNames = wonAwards.map(a => a.title).join(', ');
+      const summaryHtml = `Você brilhou na temporada ${state.currentYear} e conquistou: <b>${listNames}</b>!<br><br>Premiação total recebida: <b>+R$ ${totalCash}</b> · <b>+${totalFame} Fama</b> · <b>+${totalFollowers} Seguidores</b>.`;
+      addNews(`Premiação da Temporada ${state.currentYear}`, `${state.name} é premiado na festa de encerramento da Liga Nacional Aurora: ${listNames}.`);
+      addMessage('Federação de Futebol', `Parabéns pelas conquistas individuais na temporada ${state.currentYear}! Seu prêmio de R$ ${totalCash} foi depositado.`);
+      showPopupModal('🏅 Premiação da Temporada!', summaryHtml, 'Receber Troféus & Prêmios', () => {});
+    }
+  }
+
   /* ── Lógica de Mata-Mata / Playoffs ─────────────────────────────── */
   function enterPlayoffs() {
     const top4 = standings().slice(0, 4).map(([n]) => n);
@@ -570,6 +732,7 @@
       const semi2 = Math.random() > 0.5 ? top4[1] : top4[2];
       const champion = Math.random() > 0.5 ? semi1 : semi2;
       addNews('Campeão da Liga Nacional Aurora', `${champion} conquista a grande final e levanta o troféu de campeão.`);
+      awardSeasonPrizes();
     }
   }
 
@@ -593,6 +756,7 @@
         addNews('Eliminação na semifinal', `${playerClub()} é eliminado pelo ${w.opponent} pelo placar de ${state.score.you} a ${state.score.them}.`);
         const finalWinner = Math.random() > 0.5 ? w.opponent : (state._otherSemiWinner || 'Desconhecido');
         addNews('Campeão da Liga Nacional Aurora', `${finalWinner} vence a final e é o campeão.`);
+        awardSeasonPrizes();
       }
     } else if (w.type === 'final') {
       if (won || (drawn && Math.random() > 0.5)) {
@@ -600,15 +764,19 @@
         state.money += 5000;
         state.followers += followerGain(500);
         state.fame += 5;
+        state.career = state.career || { goals: 0, assists: 0, motm: 0, matches: 0, trophies: 0, awards: [] };
+        state.career.trophies = (state.career.trophies || 0) + 1;
         addNews('É CAMPEÃO! 🏆', `${playerClub()} conquista a Liga Nacional Aurora! Vitória por ${state.score.you} a ${state.score.them} sobre o ${w.opponent}. ${state.name} levanta a taça!`);
         addMessage('Presidente do Clube', 'Você é um campeão! A cidade inteira celebra esse título histórico!');
         state.notableActions.push({ type: 'champion', age: state.age });
         addSocialPost('champion');
         addSocialPost('champion');
+        awardSeasonPrizes();
       } else {
         state.playoffPhase = 'eliminated';
         state.money += 1500;
         addNews('Vice-campeão', `${playerClub()} luta bravamente mas é superado na final por ${state.score.you} a ${state.score.them} diante do ${w.opponent}.`);
+        awardSeasonPrizes();
       }
     }
   }
@@ -861,15 +1029,17 @@
 
   /* ── Tela Principal do Simulador (Desktop) ───────────────────────── */
   function renderDesktop(tab) {
-    const active = tab||'calendar';
+    const active = tab || state.activeTab || 'calendar';
+    state.activeTab = active;
     const names = {calendar:'Calendário',messages:`Mensagens ${state.unreadMessagesCount?`(${state.unreadMessagesCount})`:''}`,documents:'Mundo',news:'Notícias',career:'Carreira',finance:'Finanças',family:'Família',social:'Redes Sociais',photos:'Fotos',leagues:'Ligas',records:'Recordes'};
     const clubMatch = active.match(/^club:(.+)$/);
     const winTitle = clubMatch ? (clubData(clubMatch[1])?.name||'Clube') : (names[active]||'Simulador');
     const w = currentWeek();
     const weekLabel = w ? (w.type==='free'?'Semana livre':'Semana de jogo') : 'Fim de temporada';
     const reg = regionDisplay(state.region);
+    const avgR = seasonAvgRating();
 
-    app.innerHTML = `<section class="sim-desktop"><header class="sim-menu"><strong>Footlife</strong><span>Arquivo&nbsp;&nbsp; Opções&nbsp;&nbsp; Ações&nbsp;&nbsp; Exibir&nbsp;&nbsp; Ajuda</span><button id="reset">Nova Carreira</button></header><div class="sim-toolbar"><button data-tab="calendar">▣ Calendário</button><button data-tab="messages">✉ Mensagens ${state.unreadMessagesCount?`<span class="unread-badge">${state.unreadMessagesCount}</span>`:''}</button><button data-tab="family">👨‍👩‍👦 Família</button><button data-tab="news">▧ Notícias</button><button data-tab="leagues">▦ Ligas</button><span>${weekLabel} · Ano ${state.currentYear} (${state.age} anos)${state.nickname?' · '+state.nickname:''}</span></div><div class="sim-workspace">
+    app.innerHTML = `<section class="sim-desktop"><header class="sim-menu"><strong>Footlife</strong><span>Arquivo&nbsp;&nbsp; Opções&nbsp;&nbsp; Ações&nbsp;&nbsp; Exibir&nbsp;&nbsp; Ajuda</span><div style="display:flex;gap:6px"><button id="export-save" title="Baixar arquivo de save (.json)">⬇ Exportar Save</button><button id="import-save" title="Carregar arquivo de save (.json)">⬆ Importar Save</button><input type="file" id="import-save-input" accept=".json,application/json" style="display:none"><button id="reset">Nova Carreira</button></div></header><div class="sim-toolbar"><button data-tab="calendar">▣ Calendário</button><button data-tab="messages">✉ Mensagens ${state.unreadMessagesCount?`<span class="unread-badge">${state.unreadMessagesCount}</span>`:''}</button><button data-tab="family">👨‍👩‍👦 Família</button><button data-tab="news">▧ Notícias</button><button data-tab="leagues">▦ Ligas</button><span>${weekLabel} · Ano ${state.currentYear} (${state.age} anos)${state.nickname?' · '+state.nickname:''}</span></div><div class="sim-workspace">
       <aside class="tracker-window"><div class="window-title">Ficha de ${state.surname} <b>×</b></div><div class="tracker-content"><div class="portrait" style="background:none;border:none">${renderAvatarSVG(state.visuals)}</div><h2>${state.name}</h2>${state.nickname?`<span class="nickname-badge">${state.nickname}</span>`:''}<p>Brasil (${reg})<br>${state.playerClub} · ${positionLabel()} · Pé ${footLabel(state.foot)}</p>
       
       <!-- Painel de Reputação e Fama -->
@@ -900,8 +1070,8 @@
         </div>
       </div>
 
-      <table class="tracker-table"><tr><th>Gols</th><td>${state.goals}</td></tr><tr><th>Assistências</th><td>${state.assists}</td></tr><tr><th>Partidas</th><td>${state.matches}</td></tr><tr><th>Nota média</th><td>${state.matchRatings.length?calculateMatchRating().toFixed(1):'—'}</td></tr><tr><th>Melhor em Campo</th><td>${state.motmCount}</td></tr><tr><th>Dinheiro</th><td>R$ ${state.money}</td></tr><tr><th>Seguidores</th><td>${state.followers}</td></tr></table>
-      <h3>Energia (Stamina)</h3><div class="stamina-bar"><div class="stamina-fill" style="width:${state.stamina}%;background:${staminaColor()}"></div></div><span style="font-size:11px;color:${staminaColor()}">${state.stamina}/100</span>
+      <table class="tracker-table"><tr><th>Gols (Temp / Carr)</th><td>${state.goals} / ${careerGoals()}</td></tr><tr><th>Assist. (Temp / Carr)</th><td>${state.assists} / ${careerAssists()}</td></tr><tr><th>Partidas</th><td>${state.matches}</td></tr><tr><th>Nota média</th><td>${avgR!==null?avgR.toFixed(1):'—'}</td></tr><tr><th>Melhor em Campo</th><td>${state.motmCount} (${careerMotm()})</td></tr><tr><th>Dinheiro</th><td>R$ ${state.money}</td></tr><tr><th>Seguidores</th><td>${state.followers}</td></tr></table>
+      <h3>Energia (Stamina)</h3><div class="stamina-bar"><div class="stamina-fill" style="width:${state.stamina}%;background:${staminaColor()}"></div></div><span style="font-size:11px;color:${staminaColor()}">${state.stamina}/100 ${state.tacticalBonus>0?'· 📋 Bônus Tático Ativo':''}</span>
       <h3>Atributos Principais</h3>${Object.keys(state.attributes).map(k=>`<div class="attribute-line"><span>${attrLabel(k)}</span><i style="width:${attr(k)*5}%"></i><b>${attrDisplay(k)}</b></div>`).join('')}
       <div class="attribute-line" style="color:#b8860b"><span>Sorte</span><i style="width:${state.luck*5}%;background:#b8860b"></i><b>${state.luck.toFixed(1)}</b></div>
       </div></aside>
@@ -910,20 +1080,83 @@
     </div></section>`;
 
     document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>renderDesktop(b.dataset.tab)));
-    document.querySelector('#reset').addEventListener('click',reset);
+    document.querySelector('#reset').addEventListener('click', () => {
+      showPopupModal(
+        'Iniciar Nova Carreira?',
+        `Tem certeza de que deseja encerrar a carreira de <b>${state.name}</b> e começar uma nova do zero? Dica: você pode exportar seu save atual antes de reiniciar.`,
+        'Cancelar',
+        null,
+        [{ label: '🗑️ Sim, apagar e iniciar Nova Carreira', sub: 'Esta ação substituirá o save atual no navegador', onSelect: () => reset() }]
+      );
+    });
+
+    /* Exportar / Importar Save (F8) */
+    const expBtn = document.querySelector('#export-save');
+    if (expBtn) expBtn.onclick = () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `footlife-${(state.surname||'save').toLowerCase()}-${state.currentYear}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+    const impBtn = document.querySelector('#import-save');
+    const impInput = document.querySelector('#import-save-input');
+    if (impBtn && impInput) {
+      impBtn.onclick = () => impInput.click();
+      impInput.onchange = e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (!parsed || typeof parsed !== 'object') throw new Error('Formato inválido');
+            localStorage.setItem('footlife-prototype', JSON.stringify(parsed));
+            state = load() || freshState();
+            render();
+          } catch (err) {
+            showPopupModal('Erro ao Importar Save', 'O arquivo selecionado não é um save válido do Footlife.', 'Fechar');
+          }
+        };
+        reader.readAsText(file);
+      };
+    }
+
     const playBtn=document.querySelector('#play-match'); if(playBtn) playBtn.addEventListener('click',beginMatch);
     const endFreeBtn=document.querySelector('#end-free-week'); if(endFreeBtn) endFreeBtn.addEventListener('click',()=>{ processWeeklyLifeEvents(); state.scheduleIndex+=1; state.trainingsThisWeek=0; state.stamina=Math.min(100,state.stamina+20+getStaminaRecoveryBonus()); save(); renderDesktop('calendar'); });
     
-    /* Botão Avançar Ano */
+    /* Botão Avançar Ano (Salva Histórico da Temporada - B2 & F1) */
     const nextYearBtn = document.querySelector('#next-year-btn');
     if (nextYearBtn) nextYearBtn.onclick = () => {
-      const article = `Resumo da temporada do ano ${state.currentYear}: ${state.name} encerra a temporada com ${state.goals} gols e ${state.assists} assistências pelo ${playerClub()}. Alinhamento: ${reputationLabel()}, Fama: ${state.fame}.`;
+      awardSeasonPrizes();
+      const finalPos = standings().findIndex(([c]) => c === playerClub()) + 1;
+      const pRes = state.playoffPhase === 'champion' ? '🏆 Campeão' : state.playoffPhase === 'final' ? '🥈 Vice-campeão' : state.playoffPhase === 'semi' ? 'Semifinalista' : `${finalPos}º na Liga`;
+      state.seasonHistory = state.seasonHistory || [];
+      state.seasonHistory.push({
+        year: state.currentYear,
+        age: state.age,
+        club: playerClub(),
+        apps: state.matchRatings.length,
+        goals: state.goals,
+        assists: state.assists,
+        motm: state.motmCount,
+        avgRating: avgR !== null ? Number(avgR.toFixed(1)) : 6.0,
+        position: finalPos,
+        playoffResult: pRes,
+        awards: [...(state._seasonAwardsThisYear || [])]
+      });
+
+      const article = `Resumo da temporada do ano ${state.currentYear}: ${state.name} encerra a temporada com ${state.goals} gols e ${state.assists} assistências pelo ${playerClub()} (${pRes}). Alinhamento: ${reputationLabel()}, Fama: ${state.fame}.`;
       addNews(`Balanço da Temporada de ${state.currentYear}`, article);
       state.currentYear += 1;
       state.age += 1;
       state.schedule = buildSchedule(true);
       state.scheduleIndex = 0;
       state.playoffPhase = '';
+      state._prizesAwardedThisSeason = false;
+      state._seasonAwardsThisYear = [];
       state.fixtures = buildFixtures();
       state.table = blankTable();
       state.goals = 0;
@@ -948,40 +1181,29 @@
         if(state.stamina<10)return;
         state.stamina-=10;
         state.tacticalBonus=3;
-        addMessage('Técnica Mara','Você dedicou a noite para analisar vídeos dos adversários. Sente-se taticamente preparado.');
+        addMessage('Técnica Mara','Você dedicou a noite para analisar vídeos dos adversários. Sente-se taticamente preparado (-1 no alvo da Fase 1 na próxima partida).');
         state.trainingsThisWeek += 1;
         save(); renderDesktop(activeTab);
       }
       else if(a==='goOut'){
         if(state.stamina<15) return;
-        state.stamina -= 15;
-        state.trainingsThisWeek += 1;
         const sc = goOutScenarios[Math.floor(Math.random()*goOutScenarios.length)];
-        showPopupModal(sc.title, sc.text, 'Voltar', () => {});
-        setTimeout(() => {
-          const content = document.querySelector('.popup-modal-content');
-          if (content) {
-            content.innerHTML = `<h2>${sc.title}</h2><p>${sc.text}</p><div style="display:flex;flex-direction:column;gap:6px;margin:12px 0">${sc.choices.map((c,i)=>`<button class="paper-choice" data-goout-choice="${i}" type="button" style="text-align:left;padding:10px"><strong>${c[0]}</strong><br><small style="color:#596773">${c[1]}</small></button>`).join('')}</div><button class="classic-button" id="modal-cancel-btn" style="width:100%">Cancelar</button>`;
-            document.querySelectorAll('[data-goout-choice]').forEach(btn => btn.onclick = () => {
-              const idx = Number(btn.dataset.gooutChoice);
-              sc.choices[idx][2]();
-              state.popupModal = null;
-              document.querySelector('#modal-overlay')?.remove();
-              save(); renderDesktop(activeTab);
-            });
-            document.querySelector('#modal-cancel-btn').onclick = () => {
-              state.popupModal = null;
-              document.querySelector('#modal-overlay')?.remove();
-              save(); renderDesktop(activeTab);
-            };
+        const modalChoices = sc.choices.map(c => ({
+          label: interpolateClubVars(c[0]),
+          sub: c[1],
+          onSelect: () => {
+            state.stamina = Math.max(0, state.stamina - 15);
+            state.trainingsThisWeek += 1;
+            c[2]();
           }
-        }, 50);
+        }));
+        showPopupModal(sc.title, interpolateClubVars(sc.text), 'Cancelar (Sem custo)', null, modalChoices);
       }
       else {
         if(state.stamina<15)return;
         state.stamina-=15;
         state.attributes[a]=Math.min(20,state.attributes[a]+0.3);
-        addMessage('Relatório de treino',`Sessão intensa com foco em ${attrLabel(a).toLowerCase()}. Pequena evolução no fundamento.`);
+        addMessage('Relatório de treino',`Sessão intensa com foco em ${attrLabel(a).toLowerCase()}. Pequena evolução no fundamento (+0.3).`);
         state.trainingsThisWeek += 1;
         save(); renderDesktop(activeTab);
       }
@@ -1022,14 +1244,22 @@
   }
 
   function handleHomePurchase(id) {
-    const h = homeItems.find(i=>i.id===id);
+    const hIdx = homeItems.findIndex(i=>i.id===id);
+    const h = homeItems[hIdx];
     if (!h || state.money < h.price) return;
     state.money -= h.price;
     state.purchases.home = id;
-    showPopupModal('Compra em imoveis.com', `Você adquiriu o imóvel: ${h.name}! Seus pais (${state.family.mother.name} e ${state.family.father.name}) estão transbordando de orgulho e gratidão!`, 'Orgulho da Família +100', () => {
-      state.reputationScore = Math.min(100, (state.reputationScore||0)+15);
-      addMessage('Família', `Essa conquista da nova moradia (${h.name}) significa o mundo para nós. Temos muito orgulho da sua trajetória, ${state.firstName}!`);
-    });
+    const prevHighest = state.purchases.highestHomeTier || 0;
+    const isUpgrade = hIdx > prevHighest;
+    if (isUpgrade) {
+      state.purchases.highestHomeTier = hIdx;
+      showPopupModal('Compra em imoveis.com', `Você adquiriu o imóvel: ${h.name}! Seus pais (${state.family.mother.name} e ${state.family.father.name}) estão transbordando de orgulho e gratidão!`, 'Orgulho da Família (+15 Reputação)', () => {
+        state.reputationScore = Math.min(100, (state.reputationScore||0)+15);
+        addMessage('Família', `Essa conquista da nova moradia (${h.name}) significa o mundo para nós. Temos muito orgulho da sua trajetória, ${state.firstName}!`);
+      });
+    } else {
+      showPopupModal('Mudança de Moradia', `Você mudou sua residência atual para: ${h.name}.`, 'Continuar', () => {});
+    }
     save(); renderDesktop('finance');
   }
 
@@ -1041,11 +1271,16 @@
     if (tab==='family') {
       const f = state.family;
       const reg = regionDisplay(f.region);
+      const wealthDesc = f.wealthPercentile <= 5
+        ? 'Entre os 5% de maior renda (Alta Renda)'
+        : f.wealthPercentile <= 35
+        ? 'Classe média trabalhadora'
+        : 'Entre os 60% de menor renda (Origem Humilde)';
       return `<h1>Família e Residência</h1>
         <section class="classic-panel">
           <h2>A Família ${state.surname}</h2>
-          <p>Origem: <b>Brasil (${reg})</b> · Condição Social: <b>${f.wealthPercentile<=5?'Entre os 5% de maior renda (Alta Renda)':`Entre os ${f.wealthPercentile}% mais humildes`}</b></p>
-          <p>Acordo financeiro: <b>${f.titheRate>0?'50% dos ganhos repassados aos pais (até os 18 anos)':'0% de repasse (Família de alta renda)'}</b></p>
+          <p>Origem: <b>Brasil (${reg})</b> · Condição Social: <b>${wealthDesc}</b></p>
+          <p>Acordo financeiro: <b>${f.titheRate>0?'50% dos ganhos repassados aos pais (até os 18 anos)':'0% de repasse'}</b></p>
         </section>
         <h2>Membros da Família</h2>
         <table class="tracker-table large">
@@ -1062,7 +1297,8 @@
       let topPanel = '';
       if (seasonOver) {
         const champMsg = state.playoffPhase==='champion' ? '<p>🏆 <b>Parabéns! Você é o campeão da Liga Nacional Aurora!</b></p>' : '';
-        topPanel = `<section class="classic-panel"><h1>Temporada encerrada (${state.currentYear})</h1>${champMsg}<p>Colocação final na liga: <b>${standings().findIndex(([c])=>c===playerClub())+1}º lugar</b>.</p><button class="classic-button" id="next-year-btn" style="padding:8px 16px;font-size:14px">Avançar para o próximo ano (5 semanas de pré-temporada) →</button></section>`;
+        const awardsMsg = state._seasonAwardsThisYear && state._seasonAwardsThisYear.length ? `<p>🏅 <b>Prêmios na temporada:</b> ${state._seasonAwardsThisYear.join(', ')}</p>` : '';
+        topPanel = `<section class="classic-panel"><h1>Temporada encerrada (${state.currentYear})</h1>${champMsg}${awardsMsg}<p>Colocação final na liga: <b>${standings().findIndex(([c])=>c===playerClub())+1}º lugar</b>.</p><button class="classic-button" id="next-year-btn" style="padding:8px 16px;font-size:14px">Avançar para o próximo ano (5 semanas de pré-temporada) →</button></section>`;
       } else if (w.type==='free') {
         topPanel = `<section class="classic-panel" style="border-left:3px solid #398143"><h1>🏖 Semana Livre</h1><p>Sem jogo oficial nesta semana. Aproveite para descansar, treinar ou sair para construir reputação e vida social.</p><p>Energia atual: <b style="color:${staminaColor()}">${state.stamina}/100</b></p><button class="classic-button" id="end-free-week">Avançar para a próxima semana →</button></section>`;
       } else {
@@ -1071,7 +1307,7 @@
         const [home,away] = getPlayerFixture();
         const fixName = `${home} x ${away}`;
         const label = w.type==='semi'?'Semifinal do Campeonato':w.type==='final'?'Grande Final do Campeonato':(state.matches?'Rodada de Jogo':'Estreia no Profissional');
-        topPanel = `<section class="classic-panel"><h1>${label}</h1><p><b>Confronto:</b> ${fixName} ${oppData?`(Força do Adversário: ${oppData.rating})`:''}</p><p>Energia: <b style="color:${staminaColor()}">${state.stamina}/100</b></p><button class="classic-button" id="play-match" style="background:#0d58a6;color:#fff">Ir para a partida →</button></section>`;
+        topPanel = `<section class="classic-panel"><h1>${label}</h1><p><b>Confronto:</b> ${fixName} ${oppData?`(Força do Adversário: ${oppData.rating})`:''}</p><p>Energia: <b style="color:${staminaColor()}">${state.stamina}/100</b> ${state.tacticalBonus>0?'· <span style="color:#0d58a6">📋 Bônus Tático Ativo (-1 alvo)</span>':''}</p><button class="classic-button" id="play-match" style="background:#0d58a6;color:#fff">Ir para a partida →</button></section>`;
       }
 
       /* Lista Completa de Jogos */
@@ -1175,21 +1411,23 @@
     return `<p>Dados do Mundo</p>`;
   }
 
-  /* ── Aba Carreira ───────────────────────────────────────────────── */
+  /* ── Aba Carreira (Com Histórico de Temporadas e Todos os Treinos) ── */
   function renderCareerTab(hideTable = false) {
-    const form = formArrow();
     const maxT = currentWeek()?.type==='free' ? 2 : 1;
     const remaining = maxT - (state.trainingsThisWeek||0);
     const trainingOpts = [
-      {id:'rest',label:'Descansar',cost:'+35 recuperação',gain:'Recuperar energia',icon:'🛌'},
-      {id:'finishing',label:'Treinar finalização',cost:'-15 energia',gain:'finalização +0.3',icon:'⚽'},
-      {id:'passing',label:'Treinar passe',cost:'-15 energia',gain:'passe +0.3',icon:'🎯'},
-      {id:'dribbling',label:'Treinar drible',cost:'-15 energia',gain:'drible +0.3',icon:'💨'},
-      {id:'pace',label:'Treinar velocidade',cost:'-15 energia',gain:'velocidade +0.3',icon:'🏃'},
-      {id:'goOut',label:'Sair (Vida Social)',cost:'-15 energia',gain:'Seguidores / Reputação / Sorte',icon:'🎉'},
+      {id:'rest',label:'Descansar',cost:'+35 recuperação',gain:'Recuperar energia',icon:'🛌',minStam:0},
+      {id:'finishing',label:'Treinar finalização',cost:'-15 energia',gain:'finalização +0.3',icon:'⚽',minStam:15},
+      {id:'passing',label:'Treinar passe',cost:'-15 energia',gain:'passe +0.3',icon:'🎯',minStam:15},
+      {id:'dribbling',label:'Treinar drible',cost:'-15 energia',gain:'drible +0.3',icon:'💨',minStam:15},
+      {id:'pace',label:'Treinar velocidade',cost:'-15 energia',gain:'velocidade +0.3',icon:'🏃',minStam:15},
+      {id:'composure',label:'Treinar frieza',cost:'-15 energia',gain:'frieza +0.3',icon:'🧘',minStam:15},
+      {id:'workRate',label:'Treinar dedicação',cost:'-15 energia',gain:'dedicação +0.3',icon:'🛡️',minStam:15},
+      {id:'study',label:'Estudar adversário',cost:'-10 energia',gain:'Bônus tático (-1 alvo)',icon:'📋',minStam:10},
+      {id:'goOut',label:'Sair (Vida Social)',cost:'-15 energia',gain:'Seguidores / Reputação / Sorte',icon:'🎉',minStam:15},
     ];
     const grid = trainingOpts.map(o=>{
-      const dis = remaining<=0 || (o.id!=='rest' && state.stamina<15);
+      const dis = remaining<=0 || (o.minStam > 0 && state.stamina < o.minStam);
       return `<button class="training-card ${dis?'disabled':''}" data-train="${o.id}" ${dis?'disabled':''}><span style="font-size:20px">${o.icon}</span><strong>${o.label}</strong><small class="training-cost">${o.cost}</small><small class="training-gain">${o.gain}</small></button>`;
     }).join('');
 
@@ -1199,15 +1437,28 @@
       return `${heading}<div class="choice-grid">${grid}</div>`;
     }
 
+    const hist = state.seasonHistory || [];
+    const awardsList = state.career?.awards || [];
+    const avgR = seasonAvgRating();
+    const historyHtml = hist.length
+      ? `<table class="league-table" style="margin-top:8px">
+          <tr><th>Ano</th><th>Idade</th><th>Clube</th><th>J</th><th>Gols</th><th>Assist.</th><th>Nota</th><th>Campanha</th><th>Prêmios</th></tr>
+          ${hist.map(s => `<tr><td>${s.year}</td><td>${s.age}</td><td>${s.club}</td><td>${s.apps}</td><td>${s.goals}</td><td>${s.assists}</td><td>${(s.avgRating||6.0).toFixed(1)}</td><td><b>${s.playoffResult||`${s.position}º`}</b></td><td>${(s.awards&&s.awards.length)?s.awards.join(', '):'—'}</td></tr>`).join('')}
+        </table>`
+      : `<p style="color:#596773;font-size:12px">Nenhuma temporada encerrada ainda. Conclua sua primeira temporada para registrar seu histórico ano a ano.</p>`;
+
     return `<h1>Histórico da Carreira</h1>
       <table class="tracker-table large">
-        <tr><th>Clube</th><td>${playerClub()}</td></tr>
-        <tr><th>Posição</th><td>${positionLabel()}</td></tr>
-        <tr><th>Gols Marcados</th><td>${state.goals}</td></tr>
-        <tr><th>Assistências</th><td>${state.assists}</td></tr>
-        <tr><th>Alinhamento</th><td>${reputationLabel()}</td></tr>
-        <tr><th>Fama</th><td>★ ${state.fame}</td></tr>
+        <tr><th>Clube Atual</th><td>${playerClub()} (${positionLabel()})</td></tr>
+        <tr><th>Gols (Temporada / Carreira)</th><td><b>${state.goals}</b> na temporada · <b>${careerGoals()}</b> na carreira</td></tr>
+        <tr><th>Assistências (Temporada / Carreira)</th><td><b>${state.assists}</b> na temporada · <b>${careerAssists()}</b> na carreira</td></tr>
+        <tr><th>Partidas Disputadas</th><td>${state.matches} jogos (${avgR!==null?`Nota média atual: ${avgR.toFixed(1)}`:'Sem nota na temporada'})</td></tr>
+        <tr><th>Melhor em Campo (Temp / Carr)</th><td>${state.motmCount} na temporada · ${careerMotm()} na carreira</td></tr>
+        <tr><th>Títulos de Liga & Prêmios</th><td>🏆 ${state.career?.trophies || 0} título(s) · 🏅 ${awardsList.length} prêmio(s) individual(is)</td></tr>
+        <tr><th>Alinhamento & Fama</th><td>${reputationLabel()} · ★ ${state.fame} Fama</td></tr>
       </table>
+      <h2 style="margin-top:18px">Resumo por Temporada</h2>
+      ${historyHtml}
       ${heading}
       <div class="choice-grid">${grid}</div>`;
   }
@@ -1215,7 +1466,7 @@
   /* ── Itens da Loja de Equipamentos e Treino ──────────────────────── */
   const shopItems = [
     { id:'boots', name:'Chuteiras de Alta Performance', price:500, desc:'Chuteiras modernas de excelente aderência e controle de bola.', effect:'drible +0.3, velocidade +0.2', oneTime:true },
-    { id:'nutritionist', name:'Acompanhamento Nutricional', price:1000, desc:'Programa personalizado de nutrição e regeneração física.', effect:'Recuperação de energia +10 por descanso', oneTime:true },
+    { id:'nutritionist', name:'Acompanhamento Nutricional', price:1000, desc:'Programa personalizado de nutrição e regeneração física.', effect:'Recuperação passiva +10 energia/semana', oneTime:true },
     { id:'phone', name:'Celular Top de Linha', price:800, desc:'Câmera de alta resolução para vídeos com maior alcance nas redes.', effect:'+50 seguidores, +20% ganho de seguidores', oneTime:true },
     { id:'privateTraining', name:'Treinador Particular', price:500, desc:'Sessão individual focada com um especialista.', effect:'Escolha um atributo: +0.2', oneTime:false },
   ];
@@ -1224,11 +1475,12 @@
     const item = shopItems.find(i=>i.id===id);
     if (!item || state.money < item.price) return;
     if (item.oneTime && state.purchases[id]) return;
+    if (id === 'privateTraining' && state.privateTrainingPending) return;
     state.money -= item.price;
     if (item.oneTime) state.purchases[id] = true;
     switch(id) {
       case 'boots': state.attributes.dribbling=Math.min(20,state.attributes.dribbling+0.3); state.attributes.pace=Math.min(20,state.attributes.pace+0.2); addMessage('Rouparia do clube','Suas novas chuteiras proporcionam um toque de bola fantástico.'); break;
-      case 'nutritionist': state.staminaRecoveryBonus+=10; addMessage('Departamento de Nutrição','Seu novo plano alimentar vai acelerar sua recuperação física.'); break;
+      case 'nutritionist': addMessage('Departamento de Nutrição','Seu novo plano alimentar vai acelerar sua recuperação física semanal (+10 energia/semana).'); break;
       case 'phone': state.followers+=50; state.followerMultiplier=1.2; addMessage('Redes sociais','Vídeos com qualidade profissional! Seus seguidores aumentam mais rápido.'); break;
       case 'privateTraining': state.privateTrainingPending=true; break;
     }
@@ -1243,14 +1495,16 @@
     if (store === 'shop') {
       storeHtml = shopItems.map(item => {
         const owned = item.oneTime && state.purchases[item.id];
+        const pending = item.id === 'privateTraining' && state.privateTrainingPending;
         const cantAfford = state.money < item.price;
-        const dis = owned || cantAfford;
+        const dis = owned || pending || cantAfford;
+        const btnLabel = owned ? 'Adquirido ✓' : pending ? 'Sessão Pendente ↓' : 'Comprar';
         return `<div class="shop-item ${owned?'purchased':''} ${cantAfford&&!owned?'cannot-afford':''}">
           <strong>${item.name}</strong>
           <span class="shop-price">R$ ${item.price}</span>
           <p>${item.desc}</p>
           <small class="training-gain">${item.effect}</small>
-          <button class="classic-button" data-buy="${item.id}" ${dis?'disabled':''}>${owned?'Adquirido ✓':'Comprar'}</button>
+          <button class="classic-button" data-buy="${item.id}" ${dis?'disabled':''}>${btnLabel}</button>
         </div>`;
       }).join('');
     } else if (store === 'vehicles') {
@@ -1275,7 +1529,7 @@
           <strong>${h.name}</strong>
           <span class="shop-price">${h.price===0?'Grátis':'R$ '+h.price}</span>
           <p>${h.desc}</p>
-          <button class="classic-button" data-buy-home="${h.id}" ${owned||cantAfford?'disabled':''}>${owned?'Adquirido ✓':'Comprar'}</button>
+          <button class="classic-button" data-buy-home="${h.id}" ${owned||cantAfford?'disabled':''}>${owned?'Atual ✓':'Comprar'}</button>
         </div>`;
       }).join('');
     }
@@ -1300,11 +1554,11 @@
       <div class="shop-grid">${storeHtml}</div>`;
   }
 
-  /* ── Modelos de Postagens em Redes Sociais ──────────────────────── */
+  /* ── Modelos de Postagens em Redes Sociais (Com Handles Dinâmicos) ── */
   const socialTemplates = {
     hatTrick: [
       { h:'@MesaRedondaAurora', t:'QUE ATUAÇÃO! Hat-trick de {name}! Três gols no mesmo jogo. Esse garoto tem estrela demais! 🔥🎩', s:'positive' },
-      { h:'@TorcidaPortoClaro', t:'Três gols de {name}! O estádio foi ao delírio completo hoje! ⚽⚽⚽', s:'positive' },
+      { h:'{fanHandle}', t:'Três gols de {name}! O estádio em {city} foi ao delírio completo hoje! ⚽⚽⚽', s:'positive' },
     ],
     poker: [
       { h:'@MesaRedondaAurora', t:'QUATRO GOLS! {name} destruiu a defesa do {opponent} esta noite. Atuação histórica!', s:'positive' },
@@ -1312,19 +1566,19 @@
     ],
     goal: [
       { h:'@LigaAuroraAoVivo', t:'GOL! {name} marca para o {club}! Já são {totalGoals} gols na temporada.', s:'positive' },
-      { h:'@estrela_porto_oficial', t:'GOOOOOOL! É DELE! {name} balança as redes! 🌟', s:'positive' },
+      { h:'{clubHandle}', t:'GOOOOOOL! É DELE! {name} balança as redes pelo {club}! 🌟', s:'positive' },
     ],
     motm: [
-      { h:'@TorcidaPortoClaro', t:'{name} com nota {rating}. O melhor em campo com sobras! Craque do jogo! 🏆', s:'positive' },
+      { h:'{fanHandle}', t:'{name} com nota {rating}. O melhor em campo com sobras! Craque do jogo! 🏆', s:'positive' },
       { h:'@TaticaBR', t:'Melhor em Campo: {name}. Uma verdadeira aula de futebol.', s:'positive' },
     ],
     win: [
-      { h:'@estrela_porto_oficial', t:'Mais três pontos na conta! {name} e o time entregaram tudo em campo! 💪', s:'positive' },
+      { h:'{clubHandle}', t:'Mais três pontos na conta! {name} e o time entregaram tudo em campo! 💪', s:'positive' },
       { h:'@LigaAuroraAoVivo', t:'O {club} sobe na tabela após a grande vitória por {score}.', s:'neutral' },
     ],
     loss: [
       { h:'@CriticaEsportivaBR', t:'Noite apagada de {name}. Com nota {rating}, vai precisar mostrar mais serviço na próxima rodada.', s:'negative' },
-      { h:'@TorcidaPortoClaro', t:'Resultado frustrante hoje. Mas seguimos apoiando rumo ao próximo jogo. 💙💛', s:'negative' },
+      { h:'{fanHandle}', t:'Resultado frustrante hoje. Mas seguimos apoiando o {club} rumo ao próximo jogo.', s:'negative' },
     ],
     draw: [
       { h:'@TaticaBR', t:'Empate movimentado. {name} teve bons momentos, mas faltou o gol da vitória.', s:'neutral' },
@@ -1337,16 +1591,21 @@
     ],
     champion: [
       { h:'@LigaAuroraAoVivo', t:'É CAMPEÃO! O {club} conquista o troféu da Liga Nacional Aurora! 🏆🏆🏆', s:'positive' },
-      { h:'@TorcidaPortoClaro', t:'{name} foi gigante! NÓS SOMOS CAMPEÕES! Que momento inesquecível! 🎉🎉🎉', s:'positive' },
+      { h:'{fanHandle}', t:'{name} foi gigante! NÓS SOMOS CAMPEÕES! Festa histórica em {city}! 🎉🎉🎉', s:'positive' },
     ]
   };
 
   function addSocialPost(category, extraVars = {}) {
     const pool = socialTemplates[category]; if (!pool||!pool.length) return;
     const tmpl = pool[Math.floor(Math.random()*pool.length)];
-    const vars = { name:state.shirtName||state.surname||state.name, club:playerClub(), opponent:getCurrentOpponent(), totalGoals:state.goals, goals:state.matchGoalsThisGame, score:`${state.score.you}-${state.score.them}`, rating:calculateMatchRating().toFixed(1), nickname:state.nickname, ...extraVars };
-    let txt = tmpl.t; for (const [k,v] of Object.entries(vars)) txt=txt.replace(new RegExp(`{${k}}`,'g'), v);
-    state.socialFeed.unshift({ handle:tmpl.h, text:txt, sentiment:tmpl.s, stamp:`Partida ${state.matches}` });
+    const vars = { name:state.shirtName||state.surname||state.name, club:playerClub(), city:clubCity(), clubHandle:clubHandle(), fanHandle:fanHandle(), opponent:getCurrentOpponent(), totalGoals:state.goals, goals:state.matchGoalsThisGame, score:`${state.score.you}-${state.score.them}`, rating:calculateMatchRating().toFixed(1), nickname:state.nickname, ...extraVars };
+    let txt = tmpl.t;
+    let hdl = tmpl.h;
+    for (const [k,v] of Object.entries(vars)) {
+      txt = txt.replace(new RegExp(`\\{${k}\\}`,'g'), v);
+      hdl = hdl.replace(new RegExp(`\\{${k}\\}`,'g'), v);
+    }
+    state.socialFeed.unshift({ handle:hdl, text:txt, sentiment:tmpl.s, stamp:`Partida ${state.matches}` });
     if (state.socialFeed.length > 50) state.socialFeed.length = 50;
   }
 
@@ -1451,7 +1710,7 @@
     return { mod: 0, badge: 'Neutro', color: '#71818e', desc: `${lbl} Padrão` };
   }
 
-  /* ── Simulação de Ataque do Adversário ───────────────────────────── */
+  /* ── Simulação de Ataque do Adversário e dos Companheiros ────────── */
   const oppGoalTexts = [
     '{opp} faz jogada envolvente pelo meio e finaliza no canto.',
     'Uma falha na marcação permite ao {opp} marcar o gol.',
@@ -1459,6 +1718,13 @@
     'Um chute de longe do {opp} encontra o cantinho da rede.',
     '{opp} puxa um contragolpe fulminante e conclui com precisão.',
     'Cruzamento na área encontra o atacante do {opp} livre para empurrar pro gol.'
+  ];
+
+  const teamGoalTexts = [
+    '{club} trabalha a bola de pé em pé e o centroavante fuzila para a rede!',
+    'Cobrança de escanteio venenosa do {club} e cabeceio certeiro no segundo pau! Gol da equipe!',
+    'Em contra-ataque veloz, seu companheiro de {club} invade a área e bate cruzado: GOL!',
+    'Chute de fora da área de um meia do {club} desvia na zaga e morre no fundo do gol!'
   ];
 
   function simulateOppositionAttackBetween(fromMin, toMin) {
@@ -1486,12 +1752,33 @@
     return false;
   }
 
+  function simulateTeammateAttackBetween(fromMin, toMin) {
+    const opp = getCurrentOpponent();
+    const oppClubData = clubData(opp);
+    const myClubData = clubData(playerClub());
+    const myAtt = ((myClubData?.stats?.att || 10) + (myClubData?.stats?.mid || 10)) / 2;
+    const oppDef = ((oppClubData?.stats?.def || 10) + (oppClubData?.stats?.gk || 10)) / 2;
+    const chance = Math.max(3, Math.min(18, 8 + (myAtt - oppDef) * 0.9));
+
+    if (Math.random() * 100 < chance) {
+      const min = Math.min(90, Math.max(fromMin + 1, fromMin + Math.floor(Math.random() * Math.max(1, toMin - fromMin - 1))));
+      state.score.you += 1;
+      const tmpl = teamGoalTexts[Math.floor(Math.random() * teamGoalTexts.length)].replace(/\{club\}/g, playerClub());
+      state.matchEvents.push({ minute: min, text: tmpl });
+      state.matchEvents.sort((a, b) => a.minute - b.minute);
+      state.morale = Math.min(100, (state.morale || 50) + 6);
+      return true;
+    }
+    return false;
+  }
+
   /* ── Execução da Partida e Resolução D20 ─────────────────────────── */
   function beginMatch() {
     state.phase='match'; state.matchStep=0; state.score={you:0,them:0}; state.matchOutcome=null;
     state.matchFinished=false; state.interviewDone=false;
     state.morale = 50; state.moralePower = 0;
     state.matchGoalsThisGame=0; state.matchAssistsThisGame=0; state.matchSuccesses=0; state.matchFailures=0;
+    state.matchDefensiveWins = 0;
     
     const myClub = clubData(playerClub()) || {rating:60};
     const oppClub = clubData(getCurrentOpponent()) || {rating:60};
@@ -1532,6 +1819,7 @@
 
     state.matchEvents = [{ minute: 1, text: `Apito inicial! Começa ${playerClub()} x ${getCurrentOpponent()}` }];
     simulateOppositionAttackBetween(2, state.matchMoments[0]?.minute || 15);
+    simulateTeammateAttackBetween(2, state.matchMoments[0]?.minute || 15);
     state.stamina = Math.max(0, state.stamina-40);
     save(); render();
   }
@@ -1543,7 +1831,7 @@
 
     const moraleEmoji = (state.morale||50)>=60?'🔥':(state.morale||50)>=40?'😐':'⚠️';
     const hasPower = (state.moralePower||0)>0;
-    const powerLabel = hasPower?` · Confiança: +${Math.round(state.moralePower)}%`:'';
+    const powerLabel = hasPower?` · Confiança pronta (+2 no D20)`:'';
     const opp = getCurrentOpponent();
 
     const actions = getFlairActions(moment.stat);
@@ -1607,13 +1895,15 @@
     const rawRoll = rollD20();
     const p1Roll = useConf ? rawRoll + 2 : rawRoll;
     if (useConf) {
+      state.morale = Math.max(0, (state.morale || 50) - 15);
       state.moralePower = 0;
     }
 
     const secInfo = getSecondaryMod(action.secStat);
     const skillTarget = Math.max(3, Math.round(22 - attr(action.mainStat)));
     const luckMod = Math.round((state.luck || 7.0) - 7.0);
-    const baseTarget = Math.max(3, skillTarget - luckMod);
+    const tactMod = (state.tacticalBonus || 0) > 0 ? -1 : 0;
+    const baseTarget = Math.max(3, skillTarget - luckMod + tactMod);
     const p1Target = Math.max(2, baseTarget + action.riskMod + secInfo.mod);
     const p1Success = p1Roll >= p1Target;
 
@@ -1625,7 +1915,8 @@
     let mathBreakdownHtml = '';
 
     const luckStr = luckMod !== 0 ? (luckMod > 0 ? ` -${luckMod} sorte` : ` +${Math.abs(luckMod)} azar`) : '';
-    const secDetailStr = `${attrLabel(action.mainStat).toUpperCase()} base ${skillTarget}${luckStr}${action.riskMod !== 0 ? (action.riskMod > 0 ? ` +${action.riskMod} risco` : ` ${action.riskMod} seguro`) : ''}${secInfo.mod !== 0 ? (secInfo.mod < 0 ? ` -1 bônus ${attrLabel(action.secStat).toUpperCase()}` : ` +1 penalidade ${attrLabel(action.secStat).toUpperCase()}`) : ''}`;
+    const tactStr = tactMod !== 0 ? ' -1 estudo tático' : '';
+    const secDetailStr = `${attrLabel(action.mainStat).toUpperCase()} base ${skillTarget}${luckStr}${tactStr}${action.riskMod !== 0 ? (action.riskMod > 0 ? ` +${action.riskMod} risco` : ` ${action.riskMod} seguro`) : ''}${secInfo.mod !== 0 ? (secInfo.mod < 0 ? ` -1 bônus ${attrLabel(action.secStat).toUpperCase()}` : ` +1 penalidade ${attrLabel(action.secStat).toUpperCase()}`) : ''}`;
     const p1MathStr = `<b>Fase 1 (${flair}):</b> Rolou <b>${p1Roll}</b> ${useConf?`(Original: ${rawRoll} + 2 Bônus)`:''} vs Alvo <b>${p1Target}+</b> <span style="color:#596773">(${secDetailStr})</span>`;
 
     if (!p1Success) {
@@ -1653,6 +1944,8 @@
         
         if (p2Roll < gkSaveTarget) {
           state.score.you += 1; state.goals += 1; state.matchGoalsThisGame += 1;
+          if (!state.career) state.career = { goals: 0, assists: 0, motm: 0, matches: 0, trophies: 0, awards: [] };
+          state.career.goals = (state.career.goals || 0) + 1;
           state.morale = Math.min(100, state.morale + 10);
           const gk = ['se estica todo em vão','fica estátua sem reação','até toca na bola com os dedos, mas não evita o gol'][Math.floor(Math.random()*3)];
           outcomeTitle = '⚽ GOL!';
@@ -1670,6 +1963,8 @@
         
         if (p2Roll >= strikerScoreTarget) {
           state.score.you += 1; state.assists += 1; state.matchAssistsThisGame += 1;
+          if (!state.career) state.career = { goals: 0, assists: 0, motm: 0, matches: 0, trophies: 0, awards: [] };
+          state.career.assists = (state.career.assists || 0) + 1;
           state.morale = Math.min(100, state.morale + 10);
           const str = ['chuta de primeira para o fundo da rede','cabeceia firme sem chances para o goleiro','toca com frieza na saída do arqueiro'][Math.floor(Math.random()*3)];
           outcomeTitle = '⚽ ASSISTÊNCIA!';
@@ -1687,6 +1982,20 @@
         if (p2Roll < defTackleTarget) {
           outcomeTitle = 'Sucesso Total na Jogada!';
           narrativeText = `${p1Desc} O defensor não conseguiu se recuperar e você invadiu perigosamente a área!`;
+          if (!moment.chained) {
+            const nextStat = Math.random() < 0.65 ? 'finishing' : 'passing';
+            const nextMin = Math.min(90, moment.minute + 1);
+            state.matchMoments.splice(state.matchStep + 1, 0, {
+              minute: nextMin,
+              title: '🔥 Jogada Encadeada!',
+              text: nextStat === 'finishing'
+                ? 'Após deixar o marcador para trás, você invade a área cara a cara com o goleiro!'
+                : 'Após quebrar a linha de marcação, você vê seu companheiro livre na pequena área!',
+              stat: nextStat,
+              chained: true
+            });
+            narrativeText += ' Uma oportunidade clara surge na sequência do lance!';
+          }
         } else {
           outcomeTitle = 'Desarmado na Recuperação';
           narrativeText = `${p1Desc} Porém, a zaga se recuperou a tempo com um carrinho providencial.`;
@@ -1744,9 +2053,14 @@
     if (contBtn) {
       contBtn.onclick = () => {
         state.matchOutcome = null;
-        const curMin = state.matchMoments[state.matchStep]?.minute || 45;
-        const nextMin = state.matchMoments[state.matchStep + 1]?.minute || 88;
-        simulateOppositionAttackBetween(curMin, nextMin);
+        const curMoment = state.matchMoments[state.matchStep];
+        const nextMoment = state.matchMoments[state.matchStep + 1];
+        const curMin = curMoment?.minute || 45;
+        const nextMin = nextMoment?.minute || 88;
+        if (!nextMoment?.chained) {
+          simulateOppositionAttackBetween(curMin, nextMin);
+          simulateTeammateAttackBetween(curMin, nextMin);
+        }
         state.matchStep += 1;
         save(); renderMatch();
       };
@@ -1761,15 +2075,22 @@
       let c = null;
       if (rec.id === 'season_goals') c = state.goals;
       if (rec.id === 'season_assists') c = state.assists;
-      if (rec.id === 'youngest_scorer' && state.goals > 0) c = state.age;
+      if (rec.id === 'match_goals') c = state.matchGoalsThisGame || 0;
+      if (rec.id === 'youngest_scorer' && (state.matchGoalsThisGame || 0) > 0) {
+        c = Number((state.age + (state.scheduleIndex || 0) / 22).toFixed(2));
+      }
+      if (rec.id === 'club_goals') c = careerGoals();
       if (c === null) return;
       const brk = rec.lowerIsBetter ? c < rec.value : c > rec.value;
       if (brk) {
+        const wasAlreadyHolder = rec.holder === state.name;
         rec.value = c;
         rec.holder = state.name;
         rec.year = state.currentYear || 2026;
-        addNews(`Recorde quebrado: ${rec.label}`, `${state.name} estabelece uma nova marca histórica com ${c}${rec.id === 'youngest_scorer' ? ' anos' : ''}.`);
-        broke = true;
+        if (!wasAlreadyHolder || rec.id === 'match_goals') {
+          addNews(`Recorde quebrado: ${rec.label}`, `${state.name} estabelece uma nova marca histórica com ${c}${rec.id === 'youngest_scorer' ? ' anos' : ''}.`);
+          broke = true;
+        }
       }
     });
     return broke;
@@ -1784,13 +2105,21 @@
 
       const lastMin = state.matchMoments[state.matchMoments.length - 1]?.minute || 80;
       simulateOppositionAttackBetween(lastMin, 90);
+      simulateTeammateAttackBetween(lastMin, 90);
 
       const rating = calculateMatchRating();
       state.matchRatings.push(rating);
       const isMotm = rating >= 9.0;
-      if (isMotm) { state.motmCount += 1; state.followers += followerGain(200); state.fame += 2; }
+      if (!state.career) state.career = { goals: 0, assists: 0, motm: 0, matches: 0, trophies: 0, awards: [] };
+      if (isMotm) {
+        state.motmCount += 1;
+        state.career.motm = (state.career.motm || 0) + 1;
+        state.followers += followerGain(200);
+        state.fame += 2;
+      }
       detectNotableActions(rating, isMotm);
       state.matches += 1;
+      state.career.matches = state.matches;
       
       const passiveRegen = 20 + getStaminaRecoveryBonus();
       state.stamina = Math.min(100, state.stamina + passiveRegen);
@@ -1850,6 +2179,8 @@
         score: matchScore,
         note: note,
         fixture: matchFixture,
+        home: home,
+        away: away,
         rating: rating,
         goals: g,
         assists: state.matchAssistsThisGame || 0
@@ -1890,36 +2221,32 @@
       state.interviewDone = true;
       const fName = state.family?.father?.name || 'Pai';
       const mName = state.family?.mother?.name || 'Mãe';
-      showPopupModal('Entrevista Coletiva Pós-Jogo', 'Vários repórteres e microfones cercam você após sua atuação brilhante.', 'Recusar', () => {});
-      setTimeout(() => {
-        const content = document.querySelector('.popup-modal-content');
-        if (content) {
-          content.innerHTML = `<h2>Entrevista Coletiva Pós-Jogo</h2>
-            <p style="margin-bottom:12px">Repórteres cercam você na saída do gramado. Como você responde aos jornalistas?</p>
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <button class="classic-button" id="good-guy-opt" style="text-align:left;padding:10px"><b>Bom Moço (Dedicar à família):</b> "Dedico essa grande atuação à minha mãe ${mName} e ao meu pai ${fName}." <br><small style="color:#398143">+10 Reputação</small></button>
-              <button class="classic-button" id="neutral-opt" style="text-align:left;padding:10px"><b>Neutro (Foco no coletivo):</b> "Foi um grande esforço do grupo todo hoje. Continuamos focados trabalhando duro." <br><small style="color:#0d58a6">+150 Seguidores</small></button>
-              <button class="classic-button" id="bad-guy-opt" style="text-align:left;padding:10px"><b>Rebelde / Marrento:</b> "Essa vai direto para os críticos que falaram mal e duvidaram de mim!" <br><small style="color:#a31818">-10 Reputação · +2 Fama</small></button>
-              <button class="classic-button" id="decline-opt" style="text-align:left;padding:8px;background:#f5f5f0"><b>Passar Direto:</b> Apenas acenar e não dar declarações à imprensa.</button>
-            </div>`;
-          
-          const closeInterview = (cb) => {
-            if (cb) cb();
-            state.popupModal = null;
-            document.querySelector('#modal-overlay')?.remove();
-            save(); renderPostMatch();
-          };
-
-          const btnGood = document.querySelector('#good-guy-opt');
-          if (btnGood) btnGood.onclick = () => closeInterview(() => { state.reputationScore = Math.min(100, (state.reputationScore||0)+10); });
-          const btnNeu = document.querySelector('#neutral-opt');
-          if (btnNeu) btnNeu.onclick = () => closeInterview(() => { state.followers += 150; });
-          const btnBad = document.querySelector('#bad-guy-opt');
-          if (btnBad) btnBad.onclick = () => closeInterview(() => { state.reputationScore = Math.max(-100, (state.reputationScore||0)-10); state.fame += 2; });
-          const btnDec = document.querySelector('#decline-opt');
-          if (btnDec) btnDec.onclick = () => closeInterview();
-        }
-      }, 50);
+      renderPostMatch();
+      showPopupModal(
+        'Entrevista Coletiva Pós-Jogo',
+        'Repórteres cercam você na saída do gramado após sua atuação brilhante. Como você responde aos jornalistas?',
+        'Passar Direto',
+        () => { save(); renderPostMatch(); },
+        [
+          {
+            label: `<b>Bom Moço (Dedicar à família):</b> "Dedico essa grande atuação à minha mãe ${mName} e ao meu pai ${fName}." <br><small style="color:#398143">+10 Reputação</small>`,
+            onSelect: () => { state.reputationScore = Math.min(100, (state.reputationScore || 0) + 10); save(); renderPostMatch(); }
+          },
+          {
+            label: `<b>Neutro (Foco no coletivo):</b> "Foi um grande esforço do grupo todo hoje. Continuamos focados trabalhando duro." <br><small style="color:#0d58a6">+150 Seguidores</small>`,
+            onSelect: () => { state.followers += 150; save(); renderPostMatch(); }
+          },
+          {
+            label: `<b>Rebelde / Marrento:</b> "Essa vai direto para os críticos que falaram mal e duvidaram de mim!" <br><small style="color:#a31818">-10 Reputação · +2 Fama</small>`,
+            onSelect: () => { state.reputationScore = Math.max(-100, (state.reputationScore || 0) - 10); state.fame += 2; save(); renderPostMatch(); }
+          },
+          {
+            label: `<b>Passar Direto:</b> Apenas acenar e não dar declarações à imprensa.`,
+            style: 'padding:8px;background:#f5f5f0',
+            onSelect: () => { save(); renderPostMatch(); }
+          }
+        ]
+      );
     } else {
       renderPostMatch();
     }
@@ -1936,14 +2263,16 @@
   function renderPostMatch() {
     const m = state.lastMatch || {
       fixture: `${playerClub()} x ${getCurrentOpponent()}`,
+      home: playerClub(),
+      away: getCurrentOpponent(),
       score: `${state.score?.you || 0}–${state.score?.them || 0}`,
       rating: 6.0,
       note: 'Partida concluída.'
     };
     const form = formArrow();
-    const parts = (m.fixture || '').split(/[xv]/i);
-    const home = parts[0]?.trim() || playerClub();
-    const away = parts[1]?.trim() || 'Adversário';
+    const parts = (m.fixture || '').split(' x ');
+    const home = m.home || parts[0]?.trim() || playerClub();
+    const away = m.away || parts[1]?.trim() || 'Adversário';
     const ratingVal = typeof m.rating === 'number' ? m.rating : 6.0;
     const noteText = m.note || generateMatchNote(ratingVal);
 
@@ -1965,6 +2294,8 @@
         <button class="classic-button" id="leave-post-match" style="width:100%;margin-top:15px">Retornar à tela principal</button>
       </article>
     </section>`;
+
+    if (state.popupModal) renderPopupModalOverlay();
 
     const leaveBtn = document.querySelector('#leave-post-match');
     if (leaveBtn) {
